@@ -1,0 +1,31 @@
+<![CDATA[
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{1A2B3C4D-5E6F-7G8H-9I0J-1K2L3M4N5O6P}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Equipment.Simulator", "Equipment.Simulator\Equipment.Simulator.csproj", "{2B3C4D5E-6F7G-8H9I-0J1K-2L3M4N5O6P7Q}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mqtt.Solution", "Mqtt.Solution\Mqtt.Solution.csproj", "{3C4D5E6F-7G8H-9I0J-1K2L-3M4N5O6P7Q8R}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Http2.Solution", "Http2.Solution\Http2.Solution.csproj", "{4D5E6F7G-8H9I-0J1K-2L3M-4N5O6P7Q8R9S}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Grpc.Solution", "Grpc.Solution\Grpc.Solution.csproj", "{5E6F7G8H-9I0J-1K2L-3M4N-5O6P7Q8R9S0T}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Consumer.Service", "Consumer.Service\Consumer.Service.csproj", "{6F7G8H9I-0J1K-2L3M-4N5O-6P7Q8R9S0T1U}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Load.Tests", "tests\Load.Tests\Load.Tests.csproj", "{7G8H9I0J-1K2L-3M4N-5O6P-7Q8R9S0T1U2V}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Integration.Tests", "tests\Integration.Tests\Integration.Tests.csproj", "{8H9I0J1K-2L3M-4N5O-6P7Q-8R9S0T1U2V3W}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
+]]>
