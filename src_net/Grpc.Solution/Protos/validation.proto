@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option csharp_namespace = "Grpc.Solution";
+
+package validation;
+
+service ValidationService {
+    rpc SendValidation (ValidationRequest) returns (ValidationResponse);
+    rpc StreamValidations (stream ValidationRequest) returns (stream ValidationResponse);
+    rpc SendBatch (BatchRequest) returns (BatchResponse);
+}
+
+message ValidationRequest {
+    string equipment_id = 1;
+    string card_id = 2;
+    int64 timestamp = 3;
+    string location = 4;
+    double amount = 5;
+    ValidationResult result = 6;
+    int64 sequence = 7;
+    string session_id = 8;
+}
+
+message ValidationResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message BatchRequest {
+    repeated ValidationRequest validations = 1;
+}
+
+message BatchResponse {
+    int32 processed_count = 1;
+    repeated string failed_ids = 2;
+}
+
+enum ValidationResult {
+    SUCCESS = 0;
+    FAILURE = 1;
+    ERROR = 2;
+}
