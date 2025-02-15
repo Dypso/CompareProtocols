@@ -1,3 +1,5 @@
+using Common.Services;
+using Common.Settings;
 using Mqtt.Solution.Services;
 using Prometheus;
 
@@ -15,8 +17,6 @@ builder.Services.AddHostedService<MqttValidationService>();
 
 // Monitoring
 builder.Services.AddHealthChecks()
-    .AddCheck<MqttHealthCheck>("mqtt_health")
-    .AddCheck<RabbitMQHealthCheck>("rabbitmq_health")
     .ForwardToPrometheus();
 
 var app = builder.Build();

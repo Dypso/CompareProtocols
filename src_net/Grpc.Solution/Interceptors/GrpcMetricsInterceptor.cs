@@ -1,5 +1,7 @@
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+using Grpc.Solution.Monitoring;
+using System.Diagnostics;
 
 namespace Grpc.Solution.Interceptors;
 
@@ -16,6 +18,8 @@ public class GrpcMetricsInterceptor : Interceptor
         TRequest request,
         ServerCallContext context,
         UnaryServerMethod<TRequest, TResponse> continuation)
+        where TRequest : class
+        where TResponse : class
     {
         var sw = Stopwatch.StartNew();
 
@@ -40,7 +44,9 @@ public class GrpcMetricsInterceptor : Interceptor
         IAsyncStreamReader<TRequest> requestStream,
         IServerStreamWriter<TResponse> responseStream,
         ServerCallContext context,
-        StreamingServerMethod<TRequest, TResponse> continuation)
+        ServerStreamingServerMethod<TRequest, TResponse> continuation)
+        where TRequest : class
+        where TResponse : class
     {
         var sw = Stopwatch.StartNew();
         var messageCount = 0;

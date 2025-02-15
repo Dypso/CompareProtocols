@@ -1,5 +1,9 @@
 using System.Text.Json;
 using Common.Models;
+using Common.Services;
+using Common.Settings;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MQTTnet;
 using MQTTnet.Client;
@@ -57,24 +61,17 @@ public class MqttValidationService : IHostedService
     {
         try
         {
-            var payload = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment);
+            var payload = System.Text.Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment);
             var validation = JsonSerializer.Deserialize<ValidationEvent>(payload);
 
             if (validation != null)
             {
-                // Publier vers RabbitMQ pour traitement
                 await _rabbitMQService.PublishValidationAsync(validation);
-                
-                // Métriques
-                MetricsRegistry.ValidationReceived.Inc();
-                MetricsRegistry.ValidationLatency.Observe(
-                    (DateTime.UtcNow - validation.Timestamp).TotalSeconds);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing MQTT message");
-            MetricsRegistry.ValidationErrors.Inc();
         }
     }
 

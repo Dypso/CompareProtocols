@@ -1,6 +1,8 @@
 using System.Threading.Channels;
 using Common.Models;
-using Microsoft.Extensions.Options;
+using Common.Services;
+using Http2.Solution.Monitoring;
+using Microsoft.Extensions.Logging;
 
 namespace Http2.Solution.Services;
 
@@ -27,11 +29,16 @@ public class ValidationApiService
     {
         try
         {
-            using var _ = await _throttle.WaitAsync(TimeSpan.FromSeconds(5))
-                .ConfigureAwait(false);
-
-            await _channel.Writer.WriteAsync(validation);
-            MetricsRegistry.ValidationReceived.Inc();
+            await _throttle.WaitAsync(TimeSpan.FromSeconds(5));
+            try
+            {
+                await _channel.Writer.WriteAsync(validation);
+                MetricsRegistry.ValidationReceived.Inc();
+            }
+            finally
+            {
+                _throttle.Release();
+            }
         }
         catch (Exception ex)
         {

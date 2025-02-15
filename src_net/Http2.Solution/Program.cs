@@ -1,3 +1,5 @@
+using Common.Services;
+using Common.Settings;
 using Http2.Solution.Services;
 using Prometheus;
 
@@ -24,8 +26,6 @@ builder.WebHost.ConfigureKestrel(options =>
 
 // Monitoring
 builder.Services.AddHealthChecks()
-    .AddCheck<Http2HealthCheck>("http2_health")
-    .AddCheck<RabbitMQHealthCheck>("rabbitmq_health")
     .ForwardToPrometheus();
 
 var app = builder.Build();

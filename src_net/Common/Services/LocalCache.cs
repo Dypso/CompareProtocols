@@ -9,7 +9,6 @@ public class LocalCache
 {
     private readonly string _basePath;
     private readonly ILogger<LocalCache> _logger;
-    private readonly long _maxSizeBytes = 2L * 1024 * 1024 * 1024; // 2GB
     private readonly ConcurrentQueue<ValidationEvent> _memoryQueue = new();
 
     public LocalCache(string basePath, ILogger<LocalCache> logger)
