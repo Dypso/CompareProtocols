@@ -24,13 +24,19 @@ public class ValidationGrpcService : ValidationService.ValidationServiceBase
     {
         try
         {
-            using var _ = await _throttle.WaitAsync(TimeSpan.FromSeconds(5))
+            await _throttle.WaitAsync(TimeSpan.FromSeconds(5))
                 .ConfigureAwait(false);
-
-            var validation = MapToValidationEvent(request);
-            await _processor.ProcessValidation(validation);
-
-            return new ValidationResponse { Success = true };
+            
+            try
+            {
+                var validation = MapToValidationEvent(request);
+                await _processor.ProcessValidation(validation);
+                return new ValidationResponse { Success = true };
+            }
+            finally
+            {
+                _throttle.Release();
+            }
         }
         catch (OperationCanceledException)
         {

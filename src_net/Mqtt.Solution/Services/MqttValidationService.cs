@@ -38,9 +38,10 @@ public class MqttValidationService : IHostedService
             .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
             .WithClientOptions(new MqttClientOptionsBuilder()
                 .WithTcpServer(_settings.BrokerHost, _settings.BrokerPort)
-                .WithTlsOptions(o => {
-                    o.UseTls = true;
-                    o.CertificateValidationHandler = _ => true;
+                .WithTls(o => {
+                    o.IgnoreCertificateChainErrors = true;
+                    o.IgnoreCertificateRevocationErrors = true;
+                    o.AllowUntrustedCertificates = true;
                 })
                 .WithCleanSession(false)
                 .WithClientId($"validation_service_{Guid.NewGuid()}")

@@ -1,6 +1,7 @@
 using System.Data;
 using Oracle.ManagedDataAccess.Client;
 using Common.Models;
+using Mqtt.Solution.Monitoring;
 
 namespace Mqtt.Solution.Services;
 
@@ -55,12 +56,12 @@ public class OracleDataService : IDisposable
         try
         {
             await cmd.ExecuteNonQueryAsync();
-            MetricsRegistry.ValidationsPersisted.Inc(validations.Count());
+            MetricsRegistry.ValidationReceived.Inc(validations.Count());
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erreur lors du bulk insert dans Oracle");
-            MetricsRegistry.PersistenceErrors.Inc();
+            MetricsRegistry.ValidationErrors.Inc();
             throw;
         }
     }
