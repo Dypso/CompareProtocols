@@ -1,6 +1,10 @@
 using System.Text.Json;
 using Common.Models;
+using Common.Settings;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using Mqtt.Solution.Monitoring;
 
 namespace Mqtt.Solution.Services;
 
@@ -60,11 +64,11 @@ public class RabbitMQService : IDisposable
             props.MessageId = $"{validation.EquipmentId}_{validation.Sequence}";
             props.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
-            _channel.BasicPublish(
+            await Task.Run(() => _channel.BasicPublish(
                 ExchangeName,
                 routingKey,
                 props,
-                message);
+                message));
 
             MetricsRegistry.MessagePublished.Inc();
         }
@@ -78,8 +82,6 @@ public class RabbitMQService : IDisposable
 
     private int DetermineZone(string location)
     {
-        // Logique de détermination de la zone basée sur la localisation
-        // Pour le POC, on utilise un hash simple
         return Math.Abs(location.GetHashCode() % 10) + 1;
     }
 

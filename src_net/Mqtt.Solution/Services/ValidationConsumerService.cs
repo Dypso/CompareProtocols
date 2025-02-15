@@ -1,5 +1,10 @@
+using System.Text;
 using System.Text.Json;
 using Common.Models;
+using Common.Settings;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -35,10 +40,10 @@ public class ValidationConsumerService : BackgroundService
         _channel = _connection.CreateModel();
         _channel.BasicQos(0, 1000, false); // Prefetch count
 
-        _flushTimer = new Timer(FlushBuffer, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+        _flushTimer = new Timer(async _ => await FlushBuffer(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Consommer depuis toutes les queues de zone
         for (int zone = 1; zone <= 10; zone++)
@@ -49,7 +54,7 @@ public class ValidationConsumerService : BackgroundService
             _channel.BasicConsume(queueName, false, consumer);
         }
 
-        await Task.Delay(-1, stoppingToken); // Attendre indéfiniment
+        return Task.CompletedTask;
     }
 
     private async Task HandleMessage(object sender, BasicDeliverEventArgs ea)
@@ -66,7 +71,7 @@ public class ValidationConsumerService : BackgroundService
                     _batchBuffer.Add(validation);
                     if (_batchBuffer.Count >= 1000)
                     {
-                        _ = FlushBuffer(null);
+                        _ = FlushBuffer();
                     }
                 }
             }
@@ -80,7 +85,7 @@ public class ValidationConsumerService : BackgroundService
         }
     }
 
-    private async Task FlushBuffer(object? state)
+    private async Task FlushBuffer()
     {
         List<ValidationEvent> batchToProcess;
         
@@ -110,8 +115,8 @@ public class ValidationConsumerService : BackgroundService
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        await FlushBuffer(null);
-        _flushTimer.Dispose();
+        await FlushBuffer();
+        await _flushTimer.DisposeAsync();
         _channel.Dispose();
         _connection.Dispose();
         await base.StopAsync(cancellationToken);

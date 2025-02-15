@@ -1,7 +1,7 @@
+using System.Diagnostics;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Solution.Monitoring;
-using System.Diagnostics;
 
 namespace Grpc.Solution.Interceptors;
 
@@ -40,11 +40,11 @@ public class GrpcMetricsInterceptor : Interceptor
         }
     }
 
-    public override async Task StreamingServerHandler<TRequest, TResponse>(
+    public override async Task DuplexStreamingServerHandler<TRequest, TResponse>(
         IAsyncStreamReader<TRequest> requestStream,
         IServerStreamWriter<TResponse> responseStream,
         ServerCallContext context,
-        ServerStreamingServerMethod<TRequest, TResponse> continuation)
+        DuplexStreamingServerMethod<TRequest, TResponse> continuation)
         where TRequest : class
         where TResponse : class
     {

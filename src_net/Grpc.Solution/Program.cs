@@ -1,4 +1,9 @@
+using Common.Services;
+using Common.Settings;
+using Grpc.Solution.Interceptors;
 using Grpc.Solution.Services;
+using Grpc.Solution.Health;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +30,16 @@ builder.Services.AddHealthChecks()
     .AddCheck<RabbitMQHealthCheck>("rabbitmq_health")
     .ForwardToPrometheus();
 
+// Configure Kestrel
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5001, listenOptions =>
+    {
+        listenOptions.Protocols = HttpProtocols.Http2;
+        listenOptions.UseHttps();
+    });
+});
+
 var app = builder.Build();
 
 // Métriques Prometheus
@@ -32,6 +47,6 @@ app.UseMetricServer();
 
 // gRPC
 app.MapGrpcService<ValidationGrpcService>();
-app.MapGrpcHealthChecksService();
+app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client.");
 
 await app.RunAsync();

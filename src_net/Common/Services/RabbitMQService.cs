@@ -63,11 +63,11 @@ public class RabbitMQService : IDisposable
             props.MessageId = $"{validation.EquipmentId}_{validation.Sequence}";
             props.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
-            _channel.BasicPublish(
+            await Task.Run(() => _channel.BasicPublish(
                 ExchangeName,
                 routingKey,
                 props,
-                message);
+                message));
         }
         catch (Exception ex)
         {
