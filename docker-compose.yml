@@ -1,0 +1,60 @@
+services:
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./certs:/mosquitto/certs
+    networks:
+      - poc-network
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin123!
+    networks:
+      - poc-network
+
+  oracle:
+    image: gvenzl/oracle-free:latest
+    environment:
+      ORACLE_PASSWORD: oracle123!
+      APP_USER: billettique
+      APP_USER_PASSWORD: billettique123!
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    networks:
+      - poc-network
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - poc-network
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - poc-network
+
+networks:
+  poc-network:
+    driver: bridge
+
+volumes:
+  oracle-data: {}
