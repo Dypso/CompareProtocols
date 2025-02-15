@@ -1,4 +1,4 @@
-<![CDATA[using System.Text.Json;
+using System.Text.Json;
 using Common.Models;
 using Microsoft.Extensions.Options;
 using MQTTnet;
@@ -83,4 +83,4 @@ public class MqttValidationService : IHostedService
         await _mqttClient.StopAsync();
         _logger.LogInformation("MQTT Service stopped");
     }
-}]]>
+}

@@ -1,0 +1,3 @@
+# Ignorer les répertoires de build
+**/bin/
+**/obj/

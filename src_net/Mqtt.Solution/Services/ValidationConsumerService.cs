@@ -1,4 +1,4 @@
-<![CDATA[using System.Text.Json;
+using System.Text.Json;
 using Common.Models;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -116,4 +116,4 @@ public class ValidationConsumerService : BackgroundService
         _connection.Dispose();
         await base.StopAsync(cancellationToken);
     }
-}]]>
+}

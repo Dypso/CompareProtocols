@@ -1,4 +1,4 @@
-<![CDATA[using System.Data;
+using System.Data;
 using Oracle.ManagedDataAccess.Client;
 using Common.Models;
 
@@ -69,4 +69,4 @@ public class OracleDataService : IDisposable
     {
         _connection?.Dispose();
     }
-}]]>
+}

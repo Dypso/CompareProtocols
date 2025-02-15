@@ -1,4 +1,4 @@
-<![CDATA[using Prometheus;
+using Prometheus;
 
 namespace Mqtt.Solution.Monitoring;
 
@@ -23,4 +23,4 @@ public static class MetricsRegistry
             {
                 Buckets = Histogram.ExponentialBuckets(0.001, 2, 10)
             });
-}]]>
+}

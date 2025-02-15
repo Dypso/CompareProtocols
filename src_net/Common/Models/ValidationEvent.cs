@@ -1,4 +1,4 @@
-<![CDATA[namespace Common.Models;
+namespace Common.Models;
 
 public class ValidationEvent
 {
@@ -17,4 +17,4 @@ public enum ValidationResult
     Success,
     Failure,
     Error
-}]]>
+}

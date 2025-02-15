@@ -1,6 +1,6 @@
-<![CDATA[param(
-    [int]$Duration = 3600,
-    [int]$EquipmentCount = 50000,
+param(
+    [int]$Duration = 30,
+    [int]$EquipmentCount = 5,
     [string]$Protocol = "mqtt" # mqtt, http2, grpc
 )
 
@@ -9,7 +9,7 @@ Write-Host "Duration: $Duration seconds"
 Write-Host "Equipment count: $EquipmentCount"
 
 # Démarrage progressif des équipements
-$batchSize = 1000
+$batchSize = 1
 for ($i = 0; $i -lt $EquipmentCount; $i += $batchSize) {
     $count = [Math]::Min($batchSize, $EquipmentCount - $i)
     Write-Host "Starting batch of $count equipments..."

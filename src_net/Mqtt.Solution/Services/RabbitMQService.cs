@@ -1,4 +1,4 @@
-<![CDATA[using System.Text.Json;
+using System.Text.Json;
 using Common.Models;
 using RabbitMQ.Client;
 
@@ -88,4 +88,4 @@ public class RabbitMQService : IDisposable
         _channel?.Dispose();
         _connection?.Dispose();
     }
-}]]>
+}

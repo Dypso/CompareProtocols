@@ -1,4 +1,4 @@
-<![CDATA[using Mqtt.Solution.Services;
+using Mqtt.Solution.Services;
 using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,4 +27,4 @@ app.UseHttpMetrics();
 
 app.MapHealthChecks("/health");
 
-await app.RunAsync();]]>
+await app.RunAsync();

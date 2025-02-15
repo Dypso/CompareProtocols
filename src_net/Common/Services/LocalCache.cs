@@ -1,4 +1,4 @@
-<![CDATA[using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Common.Models;
 using Microsoft.Extensions.Logging;
@@ -62,4 +62,4 @@ public class LocalCache
         
         return events;
     }
-}]]>
+}
