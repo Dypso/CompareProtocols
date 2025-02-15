@@ -1,4 +1,3 @@
-<![CDATA[version: '3.8'
 services:
   mqtt-broker:
     image: eclipse-mosquitto:2.0
@@ -58,4 +57,4 @@ networks:
     driver: bridge
 
 volumes:
-  oracle-data:]]>
+  oracle-data: {}
