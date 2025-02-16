@@ -1,4 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Security.Authentication;
+using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Common.Models;
 using Common.Services;
 using Common.Settings;
@@ -8,76 +14,132 @@ using Microsoft.Extensions.Options;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
+using MQTTnet.Packets;
 using MQTTnet.Protocol;
 
-namespace Mqtt.Solution.Services;
-
-public class MqttValidationService : IHostedService
+namespace Mqtt.Solution.Services
 {
-    private readonly ILogger<MqttValidationService> _logger;
-    private readonly IManagedMqttClient _mqttClient;
-    private readonly MqttSettings _settings;
-    private readonly RabbitMQService _rabbitMQService;
-
-    public MqttValidationService(
-        ILogger<MqttValidationService> logger,
-        IOptions<MqttSettings> settings,
-        RabbitMQService rabbitMQService)
+    public class MqttValidationService : IHostedService
     {
-        _logger = logger;
-        _settings = settings.Value;
-        _rabbitMQService = rabbitMQService;
+        private readonly ILogger<MqttValidationService> _logger;
+        private readonly IManagedMqttClient _mqttClient;
+        private readonly MqttSettings _settings;
+        private readonly RabbitMQService _rabbitMQService;
+        private readonly SemaphoreSlim _messageProcessingSemaphore;
+        private const int MaxConcurrentProcessing = 100;
 
-        var factory = new MqttFactory();
-        _mqttClient = factory.CreateManagedMqttClient();
-    }
-
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        var options = new ManagedMqttClientOptionsBuilder()
-            .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
-            .WithClientOptions(new MqttClientOptionsBuilder()
-                .WithTcpServer(_settings.BrokerHost, _settings.BrokerPort)
-                .WithTls(o => {
-                    o.IgnoreCertificateChainErrors = true;
-                    o.IgnoreCertificateRevocationErrors = true;
-                    o.AllowUntrustedCertificates = true;
-                })
-                .WithCleanSession(false)
-                .WithClientId($"validation_service_{Guid.NewGuid()}")
-                .WithCredentials(_settings.Username, _settings.Password)
-                .Build())
-            .Build();
-
-        _mqttClient.ApplicationMessageReceivedAsync += HandleValidationMessageAsync;
-
-        await _mqttClient.StartAsync(options);
-        await _mqttClient.SubscribeAsync("validations/#", MqttQualityOfServiceLevel.ExactlyOnce);
-        
-        _logger.LogInformation("MQTT Service started successfully");
-    }
-
-    private async Task HandleValidationMessageAsync(MqttApplicationMessageReceivedEventArgs e)
-    {
-        try
+        public MqttValidationService(
+            ILogger<MqttValidationService> logger,
+            IOptions<MqttSettings> settings,
+            RabbitMQService rabbitMQService)
         {
-            var payload = System.Text.Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment);
-            var validation = JsonSerializer.Deserialize<ValidationEvent>(payload);
+            _logger = logger;
+            _settings = settings.Value;
+            _rabbitMQService = rabbitMQService;
+            _messageProcessingSemaphore = new SemaphoreSlim(MaxConcurrentProcessing);
 
-            if (validation != null)
+            var factory = new MqttFactory();
+            _mqttClient = factory.CreateManagedMqttClient();
+        }
+
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            try
             {
-                await _rabbitMQService.PublishValidationAsync(validation);
+                var tlsOptions = new MqttClientTlsOptions
+                {
+                    UseTls = true,
+                    SslProtocol = SslProtocols.Tls12,
+                    AllowUntrustedCertificates = true // Pour le développement uniquement
+                };
+
+                var clientOptions = new MqttClientOptions
+                {
+                    ClientId = $"validation_service_{Guid.NewGuid()}",
+                    ChannelOptions = new MqttClientTcpOptions
+                    {
+                        Server = _settings.BrokerHost,
+                        Port = _settings.BrokerPort,
+                        TlsOptions = tlsOptions
+                    },
+                    Credentials = new MqttClientCredentials(_settings.Username, Encoding.UTF8.GetBytes(_settings.Password)),
+                    KeepAlivePeriod = TimeSpan.FromSeconds(60),
+                    CleanSession = false
+                };
+
+                var options = new ManagedMqttClientOptions
+                {
+                    ClientOptions = clientOptions,
+                    AutoReconnectDelay = TimeSpan.FromSeconds(5)
+                };
+
+                _mqttClient.ApplicationMessageReceivedAsync += HandleValidationMessageAsync;
+                _mqttClient.DisconnectedAsync += HandleDisconnectedAsync;
+
+                await _mqttClient.StartAsync(options);
+
+                var topicFilter = new MqttTopicFilterBuilder()
+                    .WithTopic("validations/#")
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce)
+                    .Build();
+
+                await _mqttClient.SubscribeAsync(new[] { topicFilter });
+
+                _logger.LogInformation("MQTT Service started successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start MQTT service");
+                throw;
             }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing MQTT message");
-        }
-    }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
-    {
-        await _mqttClient.StopAsync();
-        _logger.LogInformation("MQTT Service stopped");
+        private async Task HandleValidationMessageAsync(MqttApplicationMessageReceivedEventArgs e)
+        {
+            await _messageProcessingSemaphore.WaitAsync();
+
+            try
+            {
+                var payload = e.ApplicationMessage.PayloadSegment.Array != null
+                    ? Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment.Array, e.ApplicationMessage.PayloadSegment.Offset, e.ApplicationMessage.PayloadSegment.Count)
+                    : string.Empty;
+
+                var validation = JsonSerializer.Deserialize<ValidationEvent>(payload);
+
+                if (validation != null)
+                {
+                    await _rabbitMQService.PublishValidationAsync(validation);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing MQTT message");
+            }
+            finally
+            {
+                _messageProcessingSemaphore.Release();
+            }
+        }
+
+        private Task HandleDisconnectedAsync(MqttClientDisconnectedEventArgs e)
+        {
+            _logger.LogWarning(e.Exception, "MQTT client disconnected. Reason: {Reason}", e.Reason);
+            return Task.CompletedTask;
+        }
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _mqttClient.StopAsync();
+                _messageProcessingSemaphore.Dispose();
+                _logger.LogInformation("MQTT Service stopped");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping MQTT service");
+                throw;
+            }
+        }
     }
 }

@@ -1,42 +1,47 @@
 syntax = "proto3";
 
-option csharp_namespace = "Grpc.Solution";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GrpcValidation";
 
 package validation;
 
-service ValidationService {
-    rpc SendValidation (ValidationRequest) returns (ValidationResponse);
+service Validator {
     rpc StreamValidations (stream ValidationRequest) returns (stream ValidationResponse);
-    rpc SendBatch (BatchRequest) returns (BatchResponse);
+    rpc ValidateSingle (ValidationRequest) returns (ValidationResponse);
+    rpc ValidateBatch (BatchRequest) returns (BatchResponse);
 }
 
 message ValidationRequest {
     string equipment_id = 1;
-    string card_id = 2;
-    int64 timestamp = 3;
+    string token_id = 2;
+    google.protobuf.Timestamp timestamp = 3;
     string location = 4;
     double amount = 5;
-    ValidationResult result = 6;
-    int64 sequence = 7;
-    string session_id = 8;
+    string type = 6;
+    string status = 7;
+    int64 sequence = 8;
+    string session_id = 9;
+    map<string, string> metadata = 10;
 }
 
 message ValidationResponse {
     bool success = 1;
     string message = 2;
+    string status = 3;
+    google.protobuf.Timestamp processed_at = 4;
+    map<string, string> metadata = 5;
 }
 
 message BatchRequest {
     repeated ValidationRequest validations = 1;
+    string batch_id = 2;
 }
 
 message BatchResponse {
     int32 processed_count = 1;
-    repeated string failed_ids = 2;
-}
-
-enum ValidationResult {
-    SUCCESS = 0;
-    FAILURE = 1;
-    ERROR = 2;
+    repeated string failed_validation_ids = 2;
+    google.protobuf.Timestamp processed_at = 3;
+    string status = 4;
+    string message = 5;
 }

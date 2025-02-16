@@ -9,6 +9,17 @@ services:
       - ./certs:/mosquitto/certs
     networks:
       - poc-network
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   rabbitmq:
     image: rabbitmq:3.12-management
@@ -20,19 +31,56 @@ services:
       - RABBITMQ_DEFAULT_PASS=admin123!
     networks:
       - poc-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
   oracle:
-    image: gvenzl/oracle-free:latest
+    build: 
+      context: ./config/oracle
+      dockerfile: Dockerfile
     environment:
       ORACLE_PASSWORD: oracle123!
       APP_USER: billettique
       APP_USER_PASSWORD: billettique123!
+      ORACLE_MEMORY_MIN: 2G
+      ORACLE_MEMORY_MAX: 3G
+      ORACLE_DATABASE: BILLETDB
+      ENABLE_ARCHIVELOG: "true"
+      TZ: Europe/Paris
+      ORACLE_INIT_FAST: "true"
     ports:
       - "1521:1521"
     volumes:
       - oracle-data:/opt/oracle/oradata
+      - ./config/oracle/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - poc-network
+    healthcheck:
+      test: ["CMD", "sqlplus", "-L", "billettique/billettique123!@//localhost:1521/BILLETDB", "AS", "SYSDBA", "EXIT"]
+      interval: 2m
+      timeout: 30s
+      retries: 5
+      start_period: 15m
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    shm_size: '2.5gb'
 
   prometheus:
     image: prom/prometheus
@@ -40,8 +88,26 @@ services:
       - "9090:9090"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
     networks:
       - poc-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
 
   grafana:
     image: grafana/grafana
@@ -49,12 +115,40 @@ services:
       - "3000:3000"
     volumes:
       - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123!
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     networks:
       - poc-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      prometheus:
+        condition: service_healthy
 
 networks:
   poc-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.99.0/24
 
 volumes:
-  oracle-data: {}
+  oracle-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

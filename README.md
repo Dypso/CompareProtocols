@@ -9,7 +9,7 @@ Ce POC compare trois approches de communication pour 50 000 équipements de vali
 
 ### Objectifs
 - Évaluer la performance et la fiabilité de chaque protocole
-- Gérer 60 validations/sec/équipement en pic
+- Gérer 60 validations/secondes/équipement en pic
 - Garantir zéro perte de données
 - Assurer une latence minimale
 
