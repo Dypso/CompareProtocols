@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using Common.Models;
 using Common.Services;
 using Common.Settings;
@@ -50,7 +46,8 @@ namespace Mqtt.Solution.Services
                 {
                     UseTls = true,
                     SslProtocol = SslProtocols.Tls12,
-                    AllowUntrustedCertificates = true // Pour le développement uniquement
+                    AllowUntrustedCertificates = true, // Pour le développement uniquement
+                    CertificateValidationHandler = _ => true // Pour le développement uniquement
                 };
 
                 var clientOptions = new MqttClientOptions

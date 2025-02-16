@@ -1,3 +1,14 @@
+Write-Host "Copying certificates to service directories..."
+# Create certificate directories for each service
+New-Item -ItemType Directory -Force -Path src_net/Grpc.Solution/certs | Out-Null
+New-Item -ItemType Directory -Force -Path src_net/Http2.Solution/certs | Out-Null
+New-Item -ItemType Directory -Force -Path src_net/Mqtt.Solution/certs | Out-Null
+
+# Copy certificates to service directories
+Copy-Item -Path certs/* -Destination src_net/Grpc.Solution/certs/ -Force
+Copy-Item -Path certs/* -Destination src_net/Http2.Solution/certs/ -Force
+Copy-Item -Path certs/* -Destination src_net/Mqtt.Solution/certs/ -Force
+
 Write-Host "Starting infrastructure services..."
 docker-compose up -d
 

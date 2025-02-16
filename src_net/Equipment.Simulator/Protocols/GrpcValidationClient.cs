@@ -18,6 +18,7 @@ namespace Equipment.Simulator.Protocols
         private readonly Validator.ValidatorClient _client;
         private readonly ILogger<GrpcValidationClient> _logger;
         private AsyncDuplexStreamingCall<ValidationRequest, ValidationResponse>? _stream;
+        private Task? _responseProcessingTask;
 
         public GrpcValidationClient(string equipmentId, LocalCache cache, ILogger<GrpcValidationClient> logger)
         {
@@ -56,24 +57,8 @@ namespace Equipment.Simulator.Protocols
                 _stream = _client.StreamValidations(headers);
                 
                 // Start receiving responses
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await foreach (var response in _stream.ResponseStream.ReadAllAsync())
-                        {
-                            _logger.LogInformation("Received validation response: {Status}", response.Status);
-                        }
-                    }
-                    catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled)
-                    {
-                        _logger.LogInformation("Stream cancelled");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error processing validation response stream");
-                    }
-                });
+                _responseProcessingTask = ProcessResponsesAsync();
+                await Task.Yield(); // Ensure the method is truly async
 
                 _logger.LogInformation("Connected to gRPC validation service");
             }
@@ -81,6 +66,27 @@ namespace Equipment.Simulator.Protocols
             {
                 _logger.LogError(ex, "Failed to connect to gRPC validation service");
                 throw;
+            }
+        }
+
+        private async Task ProcessResponsesAsync()
+        {
+            try
+            {
+                if (_stream == null) return;
+
+                await foreach (var response in _stream.ResponseStream.ReadAllAsync())
+                {
+                    _logger.LogInformation("Received validation response: {Status}", response.Status);
+                }
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled)
+            {
+                _logger.LogInformation("Stream cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing validation response stream");
             }
         }
 
@@ -124,8 +130,21 @@ namespace Equipment.Simulator.Protocols
                 if (_stream != null)
                 {
                     await _stream.RequestStream.CompleteAsync();
-                    await _stream.DisposeAsync();
+                    _stream.Dispose();
                 }
+
+                if (_responseProcessingTask != null)
+                {
+                    try
+                    {
+                        await _responseProcessingTask;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error while waiting for response processing task to complete");
+                    }
+                }
+
                 await _channel.ShutdownAsync();
             }
             catch (Exception ex)

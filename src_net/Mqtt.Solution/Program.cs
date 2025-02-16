@@ -12,7 +12,7 @@ builder.Services.Configure<RabbitMQSettings>(
     builder.Configuration.GetSection("RabbitMQ"));
 
 // Services
-builder.Services.AddSingleton<Common.Services.RabbitMQService>();
+builder.Services.AddSingleton<RabbitMQService>();
 builder.Services.AddHostedService<MqttValidationService>();
 
 // Monitoring

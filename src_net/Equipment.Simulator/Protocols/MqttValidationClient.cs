@@ -25,9 +25,15 @@ public class MqttValidationClient : IValidationClient
         var factory = new MqttFactory();
         _client = factory.CreateMqttClient();
         
+        var tlsOptions = new MqttClientTlsOptions
+        {
+            UseTls = true,
+            CertificateValidationHandler = _ => true // Pour le développement uniquement
+        };
+        
         _options = new MqttClientOptionsBuilder()
             .WithTcpServer("localhost", 8883)
-            .WithTls()
+            .WithTlsOptions(tlsOptions)
             .WithClientId(_equipmentId)
             .WithCleanSession(false)
             .WithCredentials("admin", "admin123!")
@@ -79,7 +85,7 @@ public class MqttValidationClient : IValidationClient
             {
                 await _client.DisconnectAsync();
             }
-            await _client.DisposeAsync();
+            await Task.Run(() => _client.Dispose());
         }
         catch (Exception ex)
         {

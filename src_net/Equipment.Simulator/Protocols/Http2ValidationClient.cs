@@ -2,6 +2,7 @@ using System.Text.Json;
 using Common.Models;
 using Common.Services;
 using Microsoft.Extensions.Logging;
+using System.Net.Http.Json;
 
 namespace Equipment.Simulator.Protocols;
 
@@ -67,9 +68,7 @@ public class Http2ValidationClient : IValidationClient
             var batchToSend = _batch.ToList();
             _batch.Clear();
 
-            var response = await _client.PostAsJsonAsync(
-                "api/validation/batch", 
-                batchToSend);
+            var response = await _client.PostAsJsonAsync("api/validation/batch", batchToSend);
 
             if (!response.IsSuccessStatusCode)
             {
