@@ -1,4 +1,7 @@
+using System.Text.Json;
 using Common.Models;
+using Common.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Equipment.Simulator.Protocols;
 
@@ -10,11 +13,13 @@ public class Http2ValidationClient : IValidationClient
     private readonly List<ValidationEvent> _batch;
     private readonly SemaphoreSlim _batchLock = new(1);
     private readonly Timer _batchTimer;
+    private readonly ILogger<Http2ValidationClient> _logger;
 
-    public Http2ValidationClient(string equipmentId, LocalCache cache)
+    public Http2ValidationClient(string equipmentId, LocalCache cache, ILogger<Http2ValidationClient> logger)
     {
         _equipmentId = equipmentId;
         _cache = cache;
+        _logger = logger;
         _batch = new List<ValidationEvent>();
         
         _client = new HttpClient
@@ -72,10 +77,12 @@ public class Http2ValidationClient : IValidationClient
                 {
                     await _cache.StoreEvent(validation);
                 }
+                _logger.LogWarning("Batch request failed with status code {StatusCode}", response.StatusCode);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error sending batch request");
             foreach (var validation in _batch)
             {
                 await _cache.StoreEvent(validation);

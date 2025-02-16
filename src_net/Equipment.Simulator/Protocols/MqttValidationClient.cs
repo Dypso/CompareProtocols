@@ -1,4 +1,7 @@
+using System.Text.Json;
 using Common.Models;
+using Common.Services;
+using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Protocol;
@@ -11,11 +14,13 @@ public class MqttValidationClient : IValidationClient
     private readonly LocalCache _cache;
     private readonly IMqttClient _client;
     private readonly MqttClientOptions _options;
+    private readonly ILogger<MqttValidationClient> _logger;
 
-    public MqttValidationClient(string equipmentId, LocalCache cache)
+    public MqttValidationClient(string equipmentId, LocalCache cache, ILogger<MqttValidationClient> logger)
     {
         _equipmentId = equipmentId;
         _cache = cache;
+        _logger = logger;
         
         var factory = new MqttFactory();
         _client = factory.CreateMqttClient();
@@ -25,7 +30,7 @@ public class MqttValidationClient : IValidationClient
             .WithTls()
             .WithClientId(_equipmentId)
             .WithCleanSession(false)
-            .WithCredentials("validation_service", "secret")
+            .WithCredentials("admin", "admin123!")
             .Build();
     }
 
@@ -34,9 +39,11 @@ public class MqttValidationClient : IValidationClient
         try
         {
             await _client.ConnectAsync(_options);
+            _logger.LogInformation("Connected to MQTT broker");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed to connect to MQTT broker");
             throw new InvalidOperationException(
                 "Failed to connect to MQTT broker", ex);
         }
@@ -54,9 +61,11 @@ public class MqttValidationClient : IValidationClient
                 .Build();
 
             await _client.PublishAsync(message);
+            _logger.LogDebug("Sent validation for token {TokenId}", validation.TokenId);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error sending validation for token {TokenId}", validation.TokenId);
             await _cache.StoreEvent(validation);
             throw;
         }
@@ -64,10 +73,17 @@ public class MqttValidationClient : IValidationClient
 
     public async ValueTask DisposeAsync()
     {
-        if (_client.IsConnected)
+        try
         {
-            await _client.DisconnectAsync();
+            if (_client.IsConnected)
+            {
+                await _client.DisconnectAsync();
+            }
+            await _client.DisposeAsync();
         }
-        await _client.DisposeAsync();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error disposing MQTT client");
+        }
     }
 }

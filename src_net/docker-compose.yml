@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   mqtt-broker:
     image: eclipse-mosquitto:2.0
@@ -5,8 +7,11 @@ services:
       - "1883:1883"
       - "8883:8883"
     volumes:
-      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - ./certs:/mosquitto/certs
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./config/mosquitto/passwd:/mosquitto/config/passwd:ro
+      - ./certs:/mosquitto/certs:ro
+      - mqtt-data:/mosquitto/data
+      - mqtt-log:/mosquitto/log
     networks:
       - poc-network
     healthcheck:
@@ -29,10 +34,13 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=admin
       - RABBITMQ_DEFAULT_PASS=admin123!
+      - RABBITMQ_DEFAULT_VHOST=/
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
     networks:
       - poc-network
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      test: ["CMD", "rabbitmqctl", "status"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -48,24 +56,23 @@ services:
       context: ./config/oracle
       dockerfile: Dockerfile
     environment:
-      ORACLE_PASSWORD: oracle123!
-      APP_USER: billettique
-      APP_USER_PASSWORD: billettique123!
-      ORACLE_MEMORY_MIN: 2G
-      ORACLE_MEMORY_MAX: 3G
-      ORACLE_DATABASE: BILLETDB
-      ENABLE_ARCHIVELOG: "true"
-      TZ: Europe/Paris
-      ORACLE_INIT_FAST: "true"
+      - ORACLE_PASSWORD=oracle123!
+      - APP_USER=billettique
+      - APP_USER_PASSWORD=billettique123!
+      - ORACLE_DATABASE=BILLETDB
+      - ORACLE_MEMORY_MIN=2G
+      - ORACLE_MEMORY_MAX=3G
+      - ENABLE_ARCHIVELOG=true
+      - TZ=Europe/Paris
     ports:
       - "1521:1521"
     volumes:
       - oracle-data:/opt/oracle/oradata
-      - ./config/oracle/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./config/oracle/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - poc-network
     healthcheck:
-      test: ["CMD", "sqlplus", "-L", "billettique/billettique123!@//localhost:1521/BILLETDB", "AS", "SYSDBA", "EXIT"]
+      test: ["CMD", "sqlplus", "-L", "sys/oracle123!@//localhost:1521/BILLETDB as sysdba", "exit"]
       interval: 2m
       timeout: 30s
       retries: 5
@@ -83,72 +90,57 @@ services:
     shm_size: '2.5gb'
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     ports:
       - "9090:9090"
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
       - prometheus-data:/prometheus
     networks:
       - poc-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=15d'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
-
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
-      - grafana-data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123!
-      - GF_AUTH_ANONYMOUS_ENABLED=false
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
-    networks:
-      - poc-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     restart: unless-stopped
     deploy:
       resources:
         limits:
           cpus: '0.5'
           memory: 512M
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123!
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - poc-network
     depends_on:
-      prometheus:
-        condition: service_healthy
+      - prometheus
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
 networks:
   poc-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 192.168.99.0/24
 
 volumes:
+  mqtt-data:
+  mqtt-log:
+  rabbitmq-data:
   oracle-data:
-    driver: local
   prometheus-data:
-    driver: local
   grafana-data:
-    driver: local

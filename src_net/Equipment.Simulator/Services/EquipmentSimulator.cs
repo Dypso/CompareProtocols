@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Logging;
 using Equipment.Simulator.Protocols;
 using Common.Models;
+using Common.Services;
 
 namespace Equipment.Simulator.Services;
 
@@ -43,11 +45,13 @@ public class EquipmentSimulator
 
     private IValidationClient CreateClient(string equipmentId)
     {
+        var logger = LoggerFactory.Create(builder => builder.AddConsole());
+        
         return _protocol.ToLowerInvariant() switch
         {
-            "mqtt" => new MqttValidationClient(equipmentId, _cache),
-            "http2" => new Http2ValidationClient(equipmentId, _cache),
-            "grpc" => new GrpcValidationClient(equipmentId, _cache),
+            "mqtt" => new MqttValidationClient(equipmentId, _cache, logger.CreateLogger<MqttValidationClient>()),
+            "http2" => new Http2ValidationClient(equipmentId, _cache, logger.CreateLogger<Http2ValidationClient>()),
+            "grpc" => new GrpcValidationClient(equipmentId, _cache, logger.CreateLogger<GrpcValidationClient>()),
             _ => throw new ArgumentException($"Unsupported protocol: {_protocol}")
         };
     }
@@ -82,6 +86,10 @@ public class EquipmentSimulator
             _logger.LogError(ex, 
                 "Error in equipment simulator {EquipmentId}", 
                 equipmentId);
+        }
+        finally
+        {
+            await client.DisposeAsync();
         }
     }
 }

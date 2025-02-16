@@ -1,6 +1,7 @@
 using CommandLine;
 using Equipment.Simulator.Protocols;
 using Equipment.Simulator.Services;
+using Microsoft.Extensions.Logging;
 
 var parser = new Parser(with => with.HelpWriter = Console.Out);
 await parser.ParseArguments<SimulatorOptions>(args)
@@ -10,9 +11,11 @@ async Task RunSimulator(SimulatorOptions opts)
 {
     try
     {
-        var logger = LoggerFactory.Create(builder =>
-            builder.AddConsole())
-            .CreateLogger<Program>();
+        var loggerFactory = LoggerFactory.Create(builder =>
+            builder.AddConsole()
+                   .SetMinimumLevel(LogLevel.Information));
+
+        var logger = loggerFactory.CreateLogger<Program>();
 
         var simulator = new EquipmentSimulator(
             opts.StartId,
