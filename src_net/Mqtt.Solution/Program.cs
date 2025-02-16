@@ -15,6 +15,12 @@ builder.Services.Configure<RabbitMQSettings>(
 builder.Services.AddSingleton<RabbitMQService>();
 builder.Services.AddHostedService<MqttValidationService>();
 
+// HTTP Server Configuration (change port to avoid conflicts)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5002); // Changed from 5001 to 5002
+});
+
 // Monitoring
 builder.Services.AddHealthChecks()
     .ForwardToPrometheus();
